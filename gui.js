@@ -4277,8 +4277,7 @@ var CGUI = function()
     activateMasterEvents();
 
     // Show the about dialog (if no song was loaded)
-    if (!songData)
-      showAboutDialog();
+    //if (!songData)showAboutDialog();
 
     // Hack!
     window.addEventListener('touchstart', unlockAudioPlaybackHack, false);
@@ -4311,6 +4310,7 @@ function gui_init()
   }
   catch (err)
   {
+    console.error(err.message);
     alert("Unexpected error: " + err.message);
   }
 }
