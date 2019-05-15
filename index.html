@@ -54,7 +54,7 @@ include("gui.js");
 <td id="UItable">
 <!-- Logo -->
 <div class="sboxLogo">
-<img id="logo" src="gui/logo.png" width="130" height="32" alt="SoundBox" title="About SoundBox" />
+  <img id="logo" style="display:none" />
 </div>
 
 <div id="newSong" class="button" title="New song">New</div>
@@ -81,7 +81,7 @@ include("gui.js");
 
 <!-- Sequencer -->
 <td>
-<div><canvas id="playGfxCanvas" width="280" height="82" /></div>
+<div style="display:none"><canvas id="playGfxCanvas" width="280" height="82" /></div>
 <div id="sequencer" title="Enter pattern numbers, 0-9,A-Z">
 <table class="tracks" id="sequencer-table"></table>
 </div>
