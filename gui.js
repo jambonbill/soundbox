@@ -38,6 +38,8 @@ include("third_party/WebMIDIAPI.js");
 "use strict";
 
 
+var ls=localStorage;
+
 //------------------------------------------------------------------------------
 // Local classes for easy access to binary data
 //------------------------------------------------------------------------------
@@ -337,6 +339,7 @@ var CGUI = function()
   };
 
   var makeURLSongData = function (data) {
+    console.log('makeURLSongData()');
     var str = btoa(data), str2 = "";
     for (var i = 0; i < str.length; ++i) {
       var chr = str[i];
@@ -438,11 +441,14 @@ var CGUI = function()
   };
 
   var makeNewSong = function () {
+
+    console.log('makeNewSong');
+
     var song = {}, i, j, k, instr, col;
 
     // Row length
     song.rowLen = calcSamplesPerRow(120);
-  
+
     // Last pattern to play
     song.endPattern = 0;
 
@@ -463,7 +469,7 @@ var CGUI = function()
 
     return song;
   };
-  
+
   var putInstrument = function(bin,instrI)
   {
     // Oscillator 1
@@ -508,9 +514,10 @@ var CGUI = function()
     bin.putUBYTE(instrI[FX_DELAY_AMT]);
     bin.putUBYTE(instrI[FX_DELAY_TIME]);
   }
-  
+
   var compress = function(unpackedData)
   {
+    console.log('compress');
     // Pack the song data
     // FIXME: To avoid bugs, we try different compression methods here until we
     // find something that works (this should not be necessary).
@@ -531,27 +538,30 @@ var CGUI = function()
       else
         packedData = unpackedData;
     }
-    // method: 
+    // method:
     //  0: none
     //  1: RLE
     //  2: DEFLATE
     return {method:compressionMethod,data:packedData};
   }
-  
+
   var uncompress = function(method,packedData)
   {
     switch (method) {
       default:
       case 0:
-        return packedData;        
+        return packedData;
       case 1:
-        return rle_decode(packedData);        
+        return rle_decode(packedData);
       case 2:
-        return RawDeflate.inflate(packedData);        
+        return RawDeflate.inflate(packedData);
     }
   }
 
   var songToBin = function (song) {
+
+    console.log('songToBin', song);
+
     var bin = new CBinWriter();
 
     // Row length (i.e. song speed)
@@ -572,7 +582,7 @@ var CGUI = function()
       instr = song.songData[i];
 
       putInstrument(bin,instr.i);
-      
+
       // Patterns
       for (j = 0; j <= song.endPattern; j++)
         bin.putUBYTE(instr.p[j]);
@@ -585,10 +595,11 @@ var CGUI = function()
         for (k = 0; k < song.patternLen * 2; k++)
           bin.putUBYTE(col.f[k]);
       }
-    }   
-    
-    var compressedData = compress(bin.getData());
+    }
 
+
+    var compressedData = compress(bin.getData());
+    //console.log('compressedData',compressedData);
     // Create a new binary stream - this is the actual file
     bin = new CBinWriter();
 
@@ -607,7 +618,10 @@ var CGUI = function()
     return bin.getData();
   };
 
-  var soundboxBinToSong = function (d) {
+  var soundboxBinToSong = function (d) {//load
+
+    console.log('soundboxBinToSong()');
+
     var bin = new CBinParser(d);
     var song = {};
 
@@ -974,13 +988,13 @@ var CGUI = function()
     for (; i < MAX_CHANNELS; i++) {
       song.songData[i] = makeEmptyChannel(song.patternLen);
     }
-  
+
     // Last pattern to play
     song.endPattern = bin.getUBYTE() + 2;
 
     return song;
   };
-    
+
   var instrumentToBin = function (instrI) {
     var bin = new CBinWriter();
 
@@ -1008,7 +1022,7 @@ var CGUI = function()
 
     return bin.getData();
   };
-  
+
   var binToInstrument = function (d) {
     var bin = new CBinParser(d);
     var instrI = [];
@@ -1028,10 +1042,10 @@ var CGUI = function()
     // Unpack instrument data
     var packedData = bin.getTail();
     var unpackedData = uncompress(compressionMethod,packedData);
-   
-    bin = new CBinParser(unpackedData);    
 
-    // Oscillator 1     
+    bin = new CBinParser(unpackedData);
+
+    // Oscillator 1
     instrI[OSC1_WAVEFORM] = bin.getUBYTE();
     instrI[OSC1_VOL] = bin.getUBYTE();
     instrI[OSC1_SEMI] = bin.getUBYTE();
@@ -1043,7 +1057,7 @@ var CGUI = function()
     instrI[OSC2_SEMI] = bin.getUBYTE();
     instrI[OSC2_DETUNE] = bin.getUBYTE();
     instrI[OSC2_XENV] = bin.getUBYTE();
-    
+
     // Noise oscillator
     instrI[NOISE_VOL] = bin.getUBYTE();
 
@@ -1051,7 +1065,7 @@ var CGUI = function()
     instrI[ENV_ATTACK] = bin.getUBYTE();
     instrI[ENV_SUSTAIN] = bin.getUBYTE();
     instrI[ENV_RELEASE] = bin.getUBYTE();
-    
+
     // Arpeggio
     instrI[ARP_CHORD] = bin.getUBYTE();
     instrI[ARP_SPEED] = bin.getUBYTE();
@@ -1072,11 +1086,14 @@ var CGUI = function()
     instrI[FX_PAN_FREQ] = bin.getUBYTE();
     instrI[FX_DELAY_AMT] = bin.getUBYTE();
     instrI[FX_DELAY_TIME] = bin.getUBYTE();
-      
+
     return instrI;
   };
 
   var binToSong = function (d) {
+
+    console.log('binToSong');
+
     // Try to parse the binary data as a SoundBox song
     var song = soundboxBinToSong(d);
 
@@ -1084,7 +1101,7 @@ var CGUI = function()
     if (!song)
       song = sonantBinToSong(d);
 
-    if (!song) {      
+    if (!song) {
       // We coulnd't parse the song
       return undefined;
     }
@@ -1093,9 +1110,12 @@ var CGUI = function()
   };
 
   var songToJS = function (song) {
+
+    console.log('songToJS');
+
     var i, j, k;
     var jsData = "";
-  
+
     jsData += "    // This music has been exported by SoundBox. You can use it with\n";
     jsData += "    // http://sb.bitsnbites.eu/player-small.js in your own product.\n\n";
 
@@ -1203,7 +1223,7 @@ var CGUI = function()
         jsData += ",";
       jsData += "\n";
     }
-    
+
     jsData += "      ],\n";
     jsData += "      rowLen: " + song.rowLen + ",   // In sample lengths\n";
     jsData += "      patternLen: " + song.patternLen + ",  // Rows per pattern\n";
@@ -1787,7 +1807,7 @@ var CGUI = function()
     updateSongSpeed();
   };
 
-  var showDialog = function () {
+  window.showDialog = function () {
     var e = document.getElementById("cover");
     e.style.visibility = "visible";
     e = document.getElementById("dialog");
@@ -1809,13 +1829,14 @@ var CGUI = function()
 
     // Create dialog content
     var o, o2;
-    o = document.createElement("img");
-    o.src = "gui/progress.gif";
-    parent.appendChild(o);
+    //o = document.createElement("img");
+    //o.src = "gui/progress.gif";
+    //parent.appendChild(o);
     o = document.createTextNode(msg);
     parent.appendChild(o);
     o = document.createElement("div");
     o.id = "progressBarParent";
+
     parent.appendChild(o);
     o2 = document.createElement("div");
     o2.id = "progressBar";
@@ -1846,12 +1867,12 @@ var CGUI = function()
     }
     return false;
   };
-  
+
   var loadInstrumentFromData = function (instrumentData) {
     var instrI = binToInstrument(instrumentData);
     if (instrI) {
       stopAudio();
-      mSong.songData[mSeqCol].i = instrI;   
+      mSong.songData[mSeqCol].i = instrI;
       updateInstrument(true);
       return true;
     }
@@ -1975,7 +1996,7 @@ var CGUI = function()
     // Opening the save dialog is considered saving; however, we have no way of knowing
     // if the user really bookmarked the song url.
     mSongUnmodified = deepCopy(mSong);
-    
+
     var parent = document.getElementById("dialog");
     parent.innerHTML = "";
 
@@ -1992,6 +2013,7 @@ var CGUI = function()
     o = document.createElement("p");
     o2 = document.createElement("a");
     var url = makeURLSongData(songToBin(mSong));
+    console.log(url);
     var shortURL = url.length < 70 ? url : url.slice(0,67) + "...";
     o2.href = url;
     o2.title = url;
@@ -2089,7 +2111,7 @@ var CGUI = function()
       if (!ok)
         return false;
     }
-    
+
     mSong = makeNewSong();
 		stopAudio();
 
@@ -2105,8 +2127,8 @@ var CGUI = function()
     setSelectedPatternCell(0, 0);
     setSelectedSequencerCell(0, 0);
     setSelectedFxTrackRow(0);
-    
-    mSongUnmodified = deepCopy(mSong); // store the song before any modifications   
+
+    mSongUnmodified = deepCopy(mSong); // store the song before any modifications
     return false;
   };
 
@@ -2116,6 +2138,7 @@ var CGUI = function()
   };
 
   var saveSong = function (e) {
+    console.log('saveSong()');
     // Update song ranges
     updateSongRanges();
 
@@ -2123,6 +2146,30 @@ var CGUI = function()
 
     e.preventDefault();
   };
+
+  var backup=function(e){
+    console.log('backup');
+    var url = makeURLSongData(songToBin(mSong));
+    localStorage.setItem('songURL',url);
+  }
+
+  var restore=function(e){
+
+    console.log('restore');
+
+    let songurl=localStorage.getItem('songURL');
+    if(!soungurl){
+      return false;
+    }
+
+    // Convert custom data URL to song data
+    var params = parseURLGetData(songurl);
+    songData = getURLSongData(params && params.data && params.data[0]);
+
+    // Load the song
+    if (songData)loadSongFromData(songData);
+    else console.warn("no songdata");
+  }
 
   var exportWAV = function(e)
   {
@@ -2140,23 +2187,34 @@ var CGUI = function()
     generateAudio(doneFun);
   };
 
+
   var exportJS = function(e)
   {
+    console.log('exportJS');
+
     e.preventDefault();
 
     // Update song ranges
     updateSongRanges();
 
+    let js=songToJS(mSong);
+
+    var win = window.open("", "Song");
+    win.document.body.innerHTML = "<pre>"+js+"</pre>";
+
     // Generate JS song data
-    var blob = new Blob([songToJS(mSong)], {type: "text/plain"});
-    saveAs(blob, "song.js");
+    //var blob = new Blob([songToJS(mSong)], {type: "text/plain"});
+    //saveAs(blob, "song.js");
   };
+
 
   var setStatus = function (msg)
   {
     document.getElementById("statusText").innerHTML = msg;
 //    window.status = msg;
   };
+
+
 
   var generateAudio = function (doneFun, opts)
   {
@@ -2206,11 +2264,11 @@ var CGUI = function()
       mAudioSourceStartTime = 0.0;
     }
   };
-  
+
   var windowBeforeUnload = function(e) {
     // makes sure the user doesn't leave the page without saving
     if (!deepEquals(mSong,mSongUnmodified)) {
-      var confirmationMessage = 'Warning: song has unsaved changes. If you leave before saving, your changes will be lost.';      
+      var confirmationMessage = 'Warning: song has unsaved changes. If you leave before saving, your changes will be lost.';
       (e || window.event).returnValue = confirmationMessage; //Gecko + IE
       return confirmationMessage; //Gecko + Webkit, Safari, Chrome etc.
     }
@@ -2637,7 +2695,7 @@ var CGUI = function()
       clearInterval(mDisplaySizeTimer);
       setStatus("");
     }
-    mDisplaySizeTimer = undefined;  
+    mDisplaySizeTimer = undefined;
   };
 
   var startDisplayingSize = function ()
@@ -2701,9 +2759,9 @@ var CGUI = function()
     }
     updateInstrument(true);
   };
-  
+
   var instrSaveMouseDown = function () {
-    var instrI = mSong.songData[mSeqCol].i;   
+    var instrI = mSong.songData[mSeqCol].i;
     var dataURI = "data:application/octet-stream;base64," + btoa(instrumentToBin(instrI));
     window.open(dataURI);
     hideDialog();
@@ -3118,13 +3176,13 @@ var CGUI = function()
       }
     }
   };
-  
+
   var presetOnKeyDown = function (e)
   {
     // ignore all keys to avoid accidentally overwriting current instrument with preset
-    if (!e) var e = window.event; 
+    if (!e) var e = window.event;
     e.returnValue = false;
-    e.cancel = true;    
+    e.cancel = true;
   }
 
   var keyboardMouseDown = function (e)
@@ -3438,14 +3496,14 @@ var CGUI = function()
       // A - Z
       if (e.keyCode >= 64 && e.keyCode <= 90)
         patternCode = e.keyCode - 54;
-      
+
       if (patternCode) {
         mSong.songData[mSeqCol].p[mSeqRow] = patternCode;
-        
+
         // if shift is pressed, advance one row
         if (e.shiftKey)
           setSelectedSequencerCell(mSeqCol, (mSeqRow + 1) % MAX_SONG_ROWS);
-        
+
         updateSequencer();
         updatePattern();
         updateFxTrack();
@@ -3627,13 +3685,17 @@ var CGUI = function()
                       mEditMode == EDIT_PATTERN ? EDIT_SEQUENCE :
                       mEditMode == EDIT_FXTRACK ? EDIT_PATTERN :
                       EDIT_FXTRACK);
-        else  
+        else
           setEditMode(mEditMode == EDIT_SEQUENCE ? EDIT_PATTERN :
                       mEditMode == EDIT_PATTERN ? EDIT_FXTRACK :
                       mEditMode == EDIT_FXTRACK ? EDIT_SEQUENCE :
-                      EDIT_SEQUENCE);       
-        return false;       
-        
+                      EDIT_SEQUENCE);
+        return false;
+
+      case 27: // ESC
+        stopAudio();
+        break;
+
       case 32: // SPACE
         if (mEditMode != EDIT_NONE)
         {
@@ -3656,11 +3718,11 @@ var CGUI = function()
               mSong.songData[col].p[row] = 0;
             }
           }
-          
+
           // if shift is pressed, advance one row
           if (e.shiftKey)
             setSelectedSequencerCell(mSeqCol, (mSeqRow + 1) % MAX_SONG_ROWS);
-          
+
           updateSequencer();
           updatePattern();
           updateFxTrack();
@@ -3714,13 +3776,18 @@ var CGUI = function()
         else if (mEditMode == EDIT_FXTRACK)
           fillFxRange();
         else if (mEditMode == EDIT_PATTERN)
-          fillPatternRange();       
+          fillPatternRange();
         break;
+
+      default:
+        console.log('key');
+        break;
+
     }
 
     return true;
   };
-  
+
   // This function tries to automatically fill the currently
   // selected range in the sequencer. If there's only one value
   // at top, it repeats it. If there's two, it tries to create
@@ -3728,7 +3795,7 @@ var CGUI = function()
   // becomes [1 2 3 4 5 6]. Three or more patterns are looped e.g.
   // [1 2 1 2 0 0 0 0] becomes [1 2 1 2 1 2 1 2]
   var fillSequenceRange = function()
-  {   
+  {
     if (mSeqRow2 <= mSeqRow)
       return;
     // checks if the condition holds for any value between first and last, inclusive
@@ -3738,75 +3805,75 @@ var CGUI = function()
       for (var col = mSeqCol;col <= mSeqCol2;++col)
         if (mSong.songData[col].p[lastRow]>0)
           break outer;
-    }   
+    }
     var firstRowHasEmpty = false;
     for (var col = mSeqCol;col <= mSeqCol2;++col)
       if (!mSong.songData[col].p[mSeqRow]) {
         firstRowHasEmpty = true;
         break;
       }
-    if (lastRow - mSeqRow >= 2 || firstRowHasEmpty) {     
+    if (lastRow - mSeqRow >= 2 || firstRowHasEmpty) {
       // we have 3 or more rows of patterns or the first row has empty cells
       // loop the cells
-      var loopLength = lastRow-mSeqRow+1;   
+      var loopLength = lastRow-mSeqRow+1;
       var fillFunction = function(col,row) {
         return mSong.songData[col].p[mSeqRow+(row-mSeqRow)%loopLength];
-      };    
+      };
     } else {
       // we have zero to two rows, try to repeate or extrapolate values
       var fillFunction = function(col,row) {
-        var start = mSong.songData[col].p[mSeqRow];        
+        var start = mSong.songData[col].p[mSeqRow];
         var next = mSong.songData[col].p[mSeqRow+1];
-        var delta = !next ? 0 : next - start;       
+        var delta = !next ? 0 : next - start;
         var extrapolated = delta * (row-mSeqRow)+start;
         return Math.max(Math.min(extrapolated,MAX_PATTERNS),1);
-      }        
+      }
     }
     for (var col = mSeqCol;col <= mSeqCol2;col++)
       for (var row = mSeqRow;row <= mSeqRow2;row++)
-        mSong.songData[col].p[row] = fillFunction(col,row);     
+        mSong.songData[col].p[row] = fillFunction(col,row);
     updateSequencer();
   }
-  
+
   // This function interpolates the effect parameters
   // between two values. The two commands have to be the same
   // and the cells between them empty.
   var fillFxRange = function()
-  {   
+  {
     if (mFxTrackRow2 <= mFxTrackRow+2)
-      return; 
+      return;
     var pat = mSong.songData[mSeqCol].p[mSeqRow]-1;
-    if (pat < 0) 
+    if (pat < 0)
       return;
     var f = mSong.songData[mSeqCol].c[pat].f;
     var cmd1 = f[mFxTrackRow];
     var cmd2 = f[mFxTrackRow2];
     if (cmd1 != cmd2)
-      return;           
+      return;
     for (var row = mFxTrackRow+1; row < mFxTrackRow2; ++row)
       if (f[row])
         return;
     var val1 = f[mFxTrackRow + mSong.patternLen];
-    var val2 = f[mFxTrackRow2 + mSong.patternLen];        
+    var val2 = f[mFxTrackRow2 + mSong.patternLen];
     for (var row = mFxTrackRow+1; row < mFxTrackRow2; ++row)
     {
       f[row] = cmd1;
       var alpha = (row - mFxTrackRow)/(mFxTrackRow2- mFxTrackRow)*1.0;
       var roundedValue = ((alpha * val2 + (1 - alpha) * val1)+.5)|0;
       f[row + mSong.patternLen] = roundedValue;
-    }                       
+    }
     updateFxTrack();
   }
-  
+
   // This function loops the notes in the selected pattern
   // e.g. [C#5 F#5 0 0 0 0] becomes [C#5 F#5 C#5 F#5 C#5 F#5]
   var fillPatternRange = function()
-  {   
+  {
     if (mPatternRow2 <= mPatternRow)
       return;
     var pat = mSong.songData[mSeqCol].p[mSeqRow]-1;
-    if (pat < 0) 
-      return;   
+    if (pat < 0)
+      return;
     var n = mSong.songData[mSeqCol].c[pat].n;
     var patternLen = mSong.patternLen;
     // find the last row that is not all empty
@@ -3815,10 +3882,10 @@ var CGUI = function()
       for (var col = mPatternCol;col <= mPatternCol2;++col)
         if (n[lastRow+col*patternLen])
           break outer;
-    }   
-    var loopLength = lastRow-mPatternRow+1;       
+    }
+    var loopLength = lastRow-mPatternRow+1;
     for (var row = mPatternRow;row <= mPatternRow2;row++)
-      for (var col = mPatternCol;col <= mPatternCol2;col++)       
+      for (var col = mPatternCol;col <= mPatternCol2;col++)
         n[col*patternLen+row] = n[col*patternLen+(row-mPatternRow)%loopLength+mPatternRow];
     updatePattern();
   }
@@ -3837,11 +3904,12 @@ var CGUI = function()
 
     // Load the file into the editor
     var reader = new FileReader();
+
     reader.onload = function(e) {
       var data = getURLSongData(e.target.result);
       // try first loading the file as a song
       var success = loadSongFromData(data);
-      if (!success) // if it is not a song, maybe its an instrument       
+      if (!success) // if it is not a song, maybe its an instrument
         success = loadInstrumentFromData(data);
       if (!success)
         alert("Binary format not recognized.");
@@ -4145,6 +4213,12 @@ var CGUI = function()
     document.getElementById("saveSong").onmousedown = saveSong;
     document.getElementById("exportJS").onmousedown = exportJS;
     document.getElementById("exportWAV").onmousedown = exportWAV;
+
+    document.getElementById("backup").onmousedown = backup;
+    document.getElementById("restore").onmousedown = restore;
+
+
+
     document.getElementById("playSong").onmousedown = playSong;
     document.getElementById("playRange").onmousedown = playRange;
     document.getElementById("stopPlaying").onmousedown = stopPlaying;
@@ -4170,7 +4244,7 @@ var CGUI = function()
     document.getElementById("instrPreset").onfocus = instrPresetFocus;
     document.getElementById("instrPreset").onchange = selectPreset;
     document.getElementById("instrPreset").onkeydown = presetOnKeyDown;
-    
+
     document.getElementById("osc1_wave_sin").addEventListener("mousedown", osc1WaveMouseDown, false);
     document.getElementById("osc1_wave_sin").addEventListener("touchstart", osc1WaveMouseDown, false);
     document.getElementById("osc1_wave_sqr").addEventListener("mousedown", osc1WaveMouseDown, false);
@@ -4281,7 +4355,7 @@ var CGUI = function()
 
     // Hack!
     window.addEventListener('touchstart', unlockAudioPlaybackHack, false);
-    
+
     // Checks if the user is about to leave the page without saving
     window.addEventListener('beforeunload', windowBeforeUnload, false);
 
@@ -4302,16 +4376,26 @@ var CGUI = function()
 
 function gui_init()
 {
+  console.log('gui_init()');
   try
   {
-    // Create a global GUI object, and initialize it
-    gGui = new CGUI();
-    gGui.init();
+    gGui = new CGUI();// Create a global GUI object, and initialize it
+    gGui.init();//
   }
   catch (err)
   {
     console.error(err.message);
     alert("Unexpected error: " + err.message);
   }
-}
 
+  window.onbeforeunload = function(e) {
+
+    //alert("onbeforeunload");
+    //save to localstorage
+    //backup();
+
+    var dialogText = 'Dialog text here';
+    e.returnValue = dialogText;
+    return dialogText;
+  };
+}
